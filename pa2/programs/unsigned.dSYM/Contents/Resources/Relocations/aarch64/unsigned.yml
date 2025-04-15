@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/jesse/projects/amath583/pa2/programs/unsigned'
+relocations:     []
+...

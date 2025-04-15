@@ -1,0 +1,5 @@
+.vscode
+.DS_STORE
+# pixi environments
+.pixi
+*.egg-info
