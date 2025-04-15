@@ -4,5 +4,5 @@
 .pixi
 *.egg-info
 **/**/_files
-**/**/programs
-!**/**/programs/*.cpp
+**/programs
+!**/programs/*.cpp
