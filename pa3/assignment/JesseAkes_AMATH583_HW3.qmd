@@ -1,0 +1,24 @@
+---
+title: AMATH 583 Homework 3
+author: Jesse Akes
+date: April 25, 2024
+format: 
+  html:
+    code-fold: show
+  pdf:
+    include-in-header: 
+       text: |
+         \usepackage{fvextra}
+         \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+         \AtBeginDocument{\floatplacement{codelisting}{H}}
+    include-before-body:
+        text: |
+            \RecustomVerbatimEnvironment{verbatim}{Verbatim}{
+            showspaces = false,
+            showtabs = false,
+            breaksymbolleft={},
+            breaklines
+            % Note: setting commandchars=\\\{\} here will cause an error 
+            }
+---
+
