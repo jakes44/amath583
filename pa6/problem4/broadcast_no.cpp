@@ -2,7 +2,6 @@
 #include <iostream>
 #include <vector>
 #include <chrono>
-#include "my_broadcast.hpp"
 
 int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
@@ -32,7 +31,7 @@ int main(int argc, char *argv[]) {
     // Broadcast the data from root process to all other processes
     start = std::chrono::high_resolution_clock::now();
     
-    my_broadcast(&data, n_bytes, 0, MPI_COMM_WORLD);
+    MPI_Bcast(data.data(), n_bytes, MPI_CHAR, 0, MPI_COMM_WORLD);
     stop = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
     auto elapsed = (duration.count() * 1e-9); 
