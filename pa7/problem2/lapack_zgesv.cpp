@@ -11,16 +11,15 @@
 
 int main()
 {
-    // Plot normalized error vs problem size
     for (int n = 16; n <= 8192; n *= 2)
     {
-        int ma = n;
-        int na = n;
-
-        int *ipiv = (int *)malloc(sizeof(int) * ma);
-        auto a = (std ::complex<double> *)malloc(sizeof(std ::complex<double>) * ma * na);
-        auto b = (std ::complex<double> *)malloc(sizeof(std ::complex<double>) * ma);
-        auto z = (std ::complex<double> *)malloc(sizeof(std ::complex<double>) * na);
+        int ma = n, na = n;
+        lapack_complex_double* a = (lapack_complex_double *)malloc(sizeof(lapack_complex_double) * ma * na);
+        lapack_complex_double*  b = (lapack_complex_double *)malloc(sizeof(lapack_complex_double) * ma);
+        lapack_complex_double* z = (lapack_complex_double *)malloc(sizeof(lapack_complex_double) * na);
+        lapack_complex_double* B = (lapack_complex_double *)malloc(sizeof(lapack_complex_double) * ma);
+        lapack_complex_double* A = (lapack_complex_double *)malloc(sizeof(lapack_complex_double) * ma * na);
+        lapack_int* ipiv = (lapack_int *)malloc(sizeof(lapack_int) * n);
 
         srand(0);
         int k = 0;
@@ -28,7 +27,7 @@ int main()
         {
             for (int i = 0; i < ma; i++)
             {
-                a[k] = 0.5 - (double)rand() / (double)RAND_MAX + std ::complex<double>(0, 1) * (0.5 - (double)rand() / (double)RAND_MAX);
+                a[k] = 0.5 - (double)rand() / (double)RAND_MAX + lapack_make_complex_double(0, 1) * (0.5 - (double)rand() / (double)RAND_MAX);
                 if (i == j)
                     a[k] *= static_cast<double>(ma);
                 k++;
@@ -37,47 +36,43 @@ int main()
         srand(1);
         for (int i = 0; i < ma; i++)
         {
-            b[i] = 0.5 - (double)rand() / (double)RAND_MAX + std ::complex<double>(0, 1) * (0.5 - (double)rand() / (double)RAND_MAX);
+            b[i] = 0.5 - (double)rand() / (double)RAND_MAX + lapack_make_complex_double(0, 1) * (0.5 - (double)rand() / (double)RAND_MAX);
         }
 
-        LAPACKE_zgesv(LAPACK_ROW_MAJOR, n, 1, a, n, ipiv, b, n);
+        memcpy(B, b, sizeof(lapack_complex_double) * ma);
+        memcpy(A, a, sizeof(lapack_complex_double) * ma * na);
+        LAPACKE_zgesv(LAPACK_ROW_MAJOR, 1, n, a, n, ipiv, b, n);
+        memcpy(z, b, sizeof(lapack_complex_double) * na);
 
-        // Compute Az
-        std::vector<std::complex<double>> Az(n, 0.0);
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < n; j++) {
-                Az[i] += a[i * n + j] * z[j];
-            }
-        }
+        // A*Z = B
+        // Residual is ||A*Z - B||
+        // Compute the residual
+        // Norm of Z
+        double normz = cblas_dznrm2(na, z, 1);
+        // Inf norm of A
+        double norma = cblas_izmax(na*ma, A, 1);
 
-        // Compute residual r = b - Az
-        std::vector<std::complex<double>> r(n);
-        for (int i = 0; i < n; i++) {
-            r[i] = b[i] - Az[i];
-        }
+        // Gemv for matric vector multiplication of A and Z
+        lapack_complex_double* a_z = (lapack_complex_double *)malloc(sizeof(lapack_complex_double) * na);
+        double alpha = 1.0;
+        double beta = 0.0;
 
-        // Compute l2 norms
-        double l2norm_r = 0.0, l2norm_z = 0.0;
-        double norm_a = 0.0;
-        for (int i = 0; i < n; i++) {
-            norm_a += std::norm(a[i * n + i]);
-        }
-        norm_a = std::sqrt(norm_a);
-        for (int i = 0; i < n; i++) {
-            l2norm_r += std::norm(r[i]);
-            l2norm_z += std::norm(z[i]);
-        }
-        l2norm_r = std::sqrt(l2norm_r);
-        l2norm_z = std::sqrt(l2norm_z);
+        void* alpha_ptr = static_cast<void*>(&alpha);
+        void* beta_ptr = static_cast<void*>(&beta);
+        
+        cblas_zgemv(CblasRowMajor, CblasNoTrans, ma, na,alpha_ptr, A, na, z, 1, beta_ptr, a_z, 1);
+        // Error = ||A*Z - B||_2 / (||A||_inf * ||Z||)_2
+        lapack_complex_double* a_z_b = (lapack_complex_double *)malloc(sizeof(lapack_complex_double) * na);
+        memcpy(a_z_b, a_z, sizeof(lapack_complex_double) * na);
+        
+        double alpha_2 = -1.0;
+        void* alpha_ptr_2 = static_cast<void*>(&alpha);
+        cblas_zaxpy(na, alpha_ptr_2, B, 1, a_z_b, 1);
+        double l2norm_r = cblas_dznrm2(na, a_z_b, 1);
+        double normalized_error = l2norm_r / (norma * normz);
 
-        double normalized_error = l2norm_r / (norm_a * l2norm_z);
+        std::cout << n << "," << l2norm_r<< "," << normalized_error << std::endl;
 
-        std::cout << "n = " << n
-                  << ", residual = " << l2norm_r
-                  << ", normalized error = " << normalized_error << std::endl;
-
-        free(a);
-        free(b);
-        free(z);
     }
+    return 0;
 }
